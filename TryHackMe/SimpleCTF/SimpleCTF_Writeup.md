@@ -120,24 +120,12 @@ The SQLi leaked a username (`mitch`), an MD5 hash, and its salt.
 
 ### Cracking the Hash
 
-CMS Made Simple salts passwords as `md5($salt . $pass)`, which is hashcat **mode 20**, not mode 10 (`md5($pass.$salt)`). The first two attempts got this wrong:
+CMS Made Simple salts passwords as `md5($salt . $pass)`, which corresponds to hashcat **mode 20** (`hash:salt` format):
 
-**Wrong mode (10):**
-```
-hashcat -O -a 0 -m 10 0c01f4468bd75d7a84c7eb73846e8d96:1dac0d92e9fa6bb2 rockyou.txt
-```
-Result: exhausted, 0 cracked — wrong hashing scheme.
-
-**Correct mode (20), wrong field order:**
-```
-hashcat -O -a 0 -m 20 1dac0d92e9fa6bb2:0c01f4468bd75d7a84c7eb73846e8d96 rockyou.txt
-```
-Result: `Token length exception` — hashcat expects `hash:salt`, not `salt:hash`.
-
-**Correct mode, correct order:**
 ```
 hashcat -O -a 0 -m 20 0c01f4468bd75d7a84c7eb73846e8d96:1dac0d92e9fa6bb2 rockyou.txt
 ```
+
 Result: cracked instantly.
 
 ```
@@ -202,8 +190,8 @@ cat /root/root.txt
 ## What Failed / Dead Ends
 
 - `robots.txt` disallowed `/openemr-5_0_1_3` — this turned out to be the generic default CUPS robots.txt template, not specific to the box. Visiting the path directly led nowhere.
-- First hashcat attempt used mode 10 (`md5($pass.$salt)`) — wrong scheme for CMS Made Simple, which uses mode 20 (`md5($salt.$pass)`).
-- Second hashcat attempt used the correct mode but the wrong field order (`salt:hash` instead of `hash:salt`), causing a token length exception.
+- Tip: don't default to hashcat mode 10 (`md5($pass.$salt)`) for CMS Made Simple hashes — it uses mode 20 (`md5($salt.$pass)`). Confirm the salting scheme before cracking, or you'll burn a full wordlist run for nothing.
+- Tip: hashcat mode 20 expects the hash in `hash:salt` order, not `salt:hash` — getting this backwards throws a token length exception instead of just failing silently.
 
 ---
 
